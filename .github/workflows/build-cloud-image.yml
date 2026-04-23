@@ -39,12 +39,12 @@ jobs:
 
       - name: Upload zs-guest-tools
         run: |
-          cp zs-guest-tools.tar.gz /tmp/zs-guest-tools.tar.gz
+          sudo cp zs-guest-tools.tar.gz /tmp/zs-guest-tools.tar.gz
 
       - name: Customize Image
         run: |
           PACKAGES="qemu-guest-agent,spice-vdagent,aria2,net-tools,iputils-ping,iputils-arping,iputils-tracepath,mtr-tiny,dnsutils,sudo,bash-completion,unzip,wget,curl,nano,most,screen,less,vim,bzip2,lldpd,htop,zstd"
-            virt-customize -a "$IMAGE_NAME" \
+            sudo virt-customize -a "$IMAGE_NAME" \
             --smp 2 --verbose \
             --timezone "Asia/Hong_Kong" \
             --append-line "/etc/default/grub:# disables OS prober to avoid loopback detection which breaks booting" \
