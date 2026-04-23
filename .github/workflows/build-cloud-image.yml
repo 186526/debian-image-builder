@@ -45,7 +45,7 @@ jobs:
         run: |
           PACKAGES="qemu-guest-agent,spice-vdagent,aria2,net-tools,iputils-ping,iputils-arping,iputils-tracepath,mtr-tiny,dnsutils,sudo,bash-completion,unzip,wget,curl,nano,most,screen,less,vim,bzip2,lldpd,htop,zstd"
             sudo virt-customize -a "$IMAGE_NAME" \
-            --smp 2 \
+            --smp 2 --verbose \
             --timezone "Asia/Hong_Kong" \
             --append-line "/etc/default/grub:# disables OS prober to avoid loopback detection which breaks booting" \
             --append-line "/etc/default/grub:GRUB_DISABLE_OS_PROBER=true" \
