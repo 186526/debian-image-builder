@@ -25,12 +25,17 @@ jobs:
           if [ "${{ matrix.version }}" = "stable" ]; then
             IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
             IMAGE_NAME="debian-13-genericcloud-amd64.qcow2"
+            BUILD_TIME=$(date +%Y%m%d%H%M)
+            RELEASE_NAME="debian-13-zstack-sunoaki+${BUILD_TIME}.qcow2"
           else
             IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
             IMAGE_NAME="debian-12-genericcloud-amd64.qcow2"
+            BUILD_TIME=$(date +%Y%m%d%H%M)
+            RELEASE_NAME="debian-12-zstack-sunoaki+${BUILD_TIME}.qcow2"
           fi
           wget "$IMAGE_URL" -O "$IMAGE_NAME"
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
 
       - name: Upload zs-guest-tools
         run: |
@@ -40,15 +45,30 @@ jobs:
         run: |
           PACKAGES="qemu-guest-agent,spice-vdagent,aria2,net-tools,iputils-ping,iputils-arping,iputils-tracepath,mtr-tiny,dnsutils,sudo,bash-completion,unzip,wget,curl,nano,most,screen,less,vim,bzip2,lldpd,htop,zstd"
             virt-customize -a "$IMAGE_NAME" \
+            --smp 2 --verbose \
+            --timezone "Asia/Hong_Kong" \
+            --append-line "/etc/default/grub:# disables OS prober to avoid loopback detection which breaks booting" \
+            --append-line "/etc/default/grub:GRUB_DISABLE_OS_PROBER=true" \
+            --run-command "update-grub" \
+            --run-command "systemctl enable serial-getty@ttyS1.service" \
+            --update \
             --install "$PACKAGES" \
             --upload /tmp/zs-guest-tools.tar.gz:/tmp/zs-guest-tools.tar.gz \
             --upload scripts/install-zs-guest-tools.sh:/tmp/install-zs-guest-tools.sh \
             --run-command "chmod +x /tmp/install-zs-guest-tools.sh" \
-            --run /tmp/install-zs-guest-tools.sh
+            --run /tmp/install-zs-guest-tools.sh \
+            --run-command "apt-get -y autoremove --purge && apt-get -y clean" \
+            --append-line "/etc/systemd/timesyncd.conf:NTP=time.apple.com time.windows.com" \
+            --delete "/var/log/*.log" \
+            --delete "/var/lib/apt/lists/*" \
+            --delete "/var/cache/apt/*" \
+            --delete "/tmp/*" \
+            --truncate "/etc/machine-id"
 
       - name: Upload Image to Release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.IMAGE_NAME }}
+          name: ${{ env.RELEASE_NAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
