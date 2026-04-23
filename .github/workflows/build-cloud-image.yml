@@ -20,7 +20,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-utils libguestfs-tools wget
 
-      - name: Download Debian Cloud Image with cache and sha256
+      - name: Download Debian Cloud Image with cache and sha512
         run: |
           if [ "${{ matrix.version }}" = "stable" ]; then
             IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
@@ -42,7 +42,7 @@ jobs:
             CACHE_SHA512=$(sha512sum /tmp/$IMAGE_NAME | awk '{print $1}')
             if [ "$CACHE_SHA512" = "$IMAGE_SHA512" ]; then
               echo "Cache valid, using cached image."
-              cp /tmp/$IMAGE_NAME ./
+              sudo cp /tmp/$IMAGE_NAME ./
               USE_CACHE=true
             else
               echo "Cache invalid, will re-download."
@@ -57,19 +57,19 @@ jobs:
               echo "Downloaded image sha512 mismatch!" >&2
               exit 1
             fi
-            cp "$IMAGE_NAME" /tmp/
+            sudo cp "$IMAGE_NAME" /tmp/
           fi
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
           echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
 
       - name: Upload zs-guest-tools
         run: |
-          cp zs-guest-tools.tar.gz /tmp/zs-guest-tools.tar.gz
+          sudo cp zs-guest-tools.tar.gz /tmp/zs-guest-tools.tar.gz
 
       - name: Customize Image
         run: |
           PACKAGES="qemu-guest-agent,spice-vdagent,aria2,net-tools,iputils-ping,iputils-arping,iputils-tracepath,mtr-tiny,dnsutils,sudo,bash-completion,unzip,wget,curl,nano,most,screen,less,vim,bzip2,lldpd,htop,zstd"
-            virt-customize -a "$IMAGE_NAME" \
+            sudo virt-customize -a "$IMAGE_NAME" \
             --smp 2 --verbose \
             --timezone "Asia/Hong_Kong" \
             --append-line "/etc/default/grub:# disables OS prober to avoid loopback detection which breaks booting" \
