@@ -66,6 +66,12 @@ jobs:
         run: |
           sudo cp zs-guest-tools.tar.gz /tmp/zs-guest-tools.tar.gz
 
+      - name: Prepare install script (normalize & inspect)
+        run: |
+          sed -i 's/\r$//' scripts/install-zs-guest-tools.sh || true
+          ls -l scripts/install-zs-guest-tools.sh || true
+          head -n 40 scripts/install-zs-guest-tools.sh || true
+
       - name: Customize Image
         run: |
           PACKAGES="qemu-guest-agent,spice-vdagent,aria2,net-tools,iputils-ping,iputils-arping,iputils-tracepath,mtr-tiny,dnsutils,sudo,bash-completion,unzip,wget,curl,nano,most,screen,less,vim,bzip2,lldpd,htop,zstd"
@@ -78,10 +84,10 @@ jobs:
             --run-command "systemctl enable serial-getty@ttyS1.service" \
             --mkdir /tmp/zs-guest-tools \
             --upload /tmp/zs-guest-tools.tar.gz:/tmp/zs-guest-tools.tar.gz \
-            --upload scripts/install-zs-guest-tools.sh:/tmp/install-zs-guest-tools.sh \
-            --run-command "chmod +x /tmp/install-zs-guest-tools.sh" \
-            --run-command "ls -l /tmp; cat /tmp/install-zs-guest-tools.sh || echo notfound" \
-            --run /tmp/install-zs-guest-tools.sh \
+            --run-command "tar -tzf /tmp/zs-guest-tools.tar.gz | head -n 20" \
+            --run-command "tar -xzf /tmp/zs-guest-tools.tar.gz -C /tmp/zs-guest-tools" \
+            --run-command "ls -l /tmp/zs-guest-tools || true" \
+            --run-command 'if [ -f /tmp/zs-guest-tools/install-zs-guest-tools.sh ]; then chmod +x /tmp/zs-guest-tools/install-zs-guest-tools.sh && /tmp/zs-guest-tools/install-zs-guest-tools.sh; else echo "install script not found in archive" >&2; fi' \
             --update \
             --install "$PACKAGES" \
             --run-command "apt-get -y autoremove --purge && apt-get -y clean" \
