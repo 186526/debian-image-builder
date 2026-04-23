@@ -20,31 +20,56 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-utils libguestfs-tools wget
 
-      - name: Download Debian Cloud Image
+      - name: Download Debian Cloud Image with cache and sha256
         run: |
           if [ "${{ matrix.version }}" = "stable" ]; then
             IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
             IMAGE_NAME="debian-13-genericcloud-amd64.qcow2"
+            IMAGE_SHA256="$(wget -qO- https://cloud.debian.org/images/cloud/trixie/latest/SHA256SUMS | grep "$IMAGE_NAME" | awk '{print $1}')"
             BUILD_TIME=$(date +%Y%m%d%H%M)
             RELEASE_NAME="debian-13-zstack-sunoaki+${BUILD_TIME}.qcow2"
           else
             IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
             IMAGE_NAME="debian-12-genericcloud-amd64.qcow2"
+            IMAGE_SHA256="$(wget -qO- https://cloud.debian.org/images/cloud/bookworm/latest/SHA256SUMS | grep "$IMAGE_NAME" | awk '{print $1}')"
             BUILD_TIME=$(date +%Y%m%d%H%M)
             RELEASE_NAME="debian-12-zstack-sunoaki+${BUILD_TIME}.qcow2"
           fi
-          wget "$IMAGE_URL" -O "$IMAGE_NAME"
+
+          USE_CACHE=false
+          if [ -f /tmp/$IMAGE_NAME ]; then
+            echo "Found cached image in /tmp/$IMAGE_NAME, checking sha256..."
+            CACHE_SHA256=$(sha256sum /tmp/$IMAGE_NAME | awk '{print $1}')
+            if [ "$CACHE_SHA256" = "$IMAGE_SHA256" ]; then
+              echo "Cache valid, using cached image."
+              cp /tmp/$IMAGE_NAME ./
+              USE_CACHE=true
+            else
+              echo "Cache invalid, will re-download."
+            fi
+          fi
+
+          if [ "$USE_CACHE" != "true" ]; then
+            echo "Downloading image..."
+            wget "$IMAGE_URL" -O "$IMAGE_NAME"
+            DL_SHA256=$(sha256sum "$IMAGE_NAME" | awk '{print $1}')
+            if [ "$DL_SHA256" != "$IMAGE_SHA256" ]; then
+              echo "Downloaded image sha256 mismatch!" >&2
+              exit 1
+            fi
+            cp "$IMAGE_NAME" /tmp/
+          fi
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
           echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
 
       - name: Upload zs-guest-tools
         run: |
-          sudo cp zs-guest-tools.tar.gz /tmp/zs-guest-tools.tar.gz
+          cp zs-guest-tools.tar.gz /tmp/zs-guest-tools.tar.gz
 
       - name: Customize Image
         run: |
           PACKAGES="qemu-guest-agent,spice-vdagent,aria2,net-tools,iputils-ping,iputils-arping,iputils-tracepath,mtr-tiny,dnsutils,sudo,bash-completion,unzip,wget,curl,nano,most,screen,less,vim,bzip2,lldpd,htop,zstd"
-            sudo virt-customize -a "$IMAGE_NAME" \
+            virt-customize -a "$IMAGE_NAME" \
             --smp 2 --verbose \
             --timezone "Asia/Hong_Kong" \
             --append-line "/etc/default/grub:# disables OS prober to avoid loopback detection which breaks booting" \
