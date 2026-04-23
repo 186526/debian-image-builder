@@ -1,0 +1,54 @@
+name: Build Debian Cloud Image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version:
+          - stable
+          - oldstable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-utils libguestfs-tools wget
+
+      - name: Download Debian Cloud Image
+        run: |
+          if [ "${{ matrix.version }}" = "stable" ]; then
+            IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
+            IMAGE_NAME="debian-13-genericcloud-amd64.qcow2"
+          else
+            IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
+            IMAGE_NAME="debian-12-genericcloud-amd64.qcow2"
+          fi
+          wget "$IMAGE_URL" -O "$IMAGE_NAME"
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+
+      - name: Upload zs-guest-tools
+        run: |
+          cp zs-guest-tools.tar.gz /tmp/zs-guest-tools.tar.gz
+
+      - name: Customize Image
+        run: |
+          PACKAGES="qemu-guest-agent,spice-vdagent,aria2,net-tools,iputils-ping,iputils-arping,iputils-tracepath,mtr-tiny,dnsutils,sudo,bash-completion,unzip,wget,curl,nano,most,screen,less,vim,bzip2,lldpd,htop,zstd"
+          virt-customize -a "$IMAGE_NAME" \
+            --install "$PACKAGES" \
+            --upload /tmp/zs-guest-tools.tar.gz:/tmp/zs-guest-tools.tar.gz \
+            --upload scripts/install-zs-guest-tools.sh:/tmp/install-zs-guest-tools.sh \
+            --run-command "chmod +x /tmp/install-zs-guest-tools.sh" \
+            --run /tmp/install-zs-guest-tools.sh
+
+      - name: Upload Image to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.IMAGE_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
