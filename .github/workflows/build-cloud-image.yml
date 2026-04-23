@@ -51,11 +51,12 @@ jobs:
             --append-line "/etc/default/grub:GRUB_DISABLE_OS_PROBER=true" \
             --run-command "update-grub" \
             --run-command "systemctl enable serial-getty@ttyS1.service" \
+            --mkdir /tmp/zs-guest-tools \
             --upload /tmp/zs-guest-tools.tar.gz:/tmp/zs-guest-tools.tar.gz \
-            --upload scripts/install-zs-guest-tools.sh:/root/install-zs-guest-tools.sh \
-            --run-command "chmod +x /root/install-zs-guest-tools.sh" \
-            --run-command "ls -l /root" \
-            --run /root/install-zs-guest-tools.sh \
+            --upload scripts/install-zs-guest-tools.sh:/tmp/install-zs-guest-tools.sh \
+            --run-command "chmod +x /tmp/install-zs-guest-tools.sh" \
+            --run-command "ls -l /tmp; cat /tmp/install-zs-guest-tools.sh || echo notfound" \
+            --run /tmp/install-zs-guest-tools.sh \
             --update \
             --install "$PACKAGES" \
             --run-command "apt-get -y autoremove --purge && apt-get -y clean" \
