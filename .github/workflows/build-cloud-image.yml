@@ -40,7 +40,6 @@ jobs:
         run: |
           PACKAGES="qemu-guest-agent,spice-vdagent,aria2,net-tools,iputils-ping,iputils-arping,iputils-tracepath,mtr-tiny,dnsutils,sudo,bash-completion,unzip,wget,curl,nano,most,screen,less,vim,bzip2,lldpd,htop,zstd"
             virt-customize -a "$IMAGE_NAME" \
-            --run-command 'echo "nameserver 8.8.8.8" > /etc/resolv.conf' \
             --install "$PACKAGES" \
             --upload /tmp/zs-guest-tools.tar.gz:/tmp/zs-guest-tools.tar.gz \
             --upload scripts/install-zs-guest-tools.sh:/tmp/install-zs-guest-tools.sh \
